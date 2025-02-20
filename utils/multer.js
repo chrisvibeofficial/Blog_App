@@ -15,7 +15,7 @@ const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true)
   } else {
-    new Error('Invalid file format: Upload Image')
+    cb(new Error('Invalid file format: Upload Image'))
   }
 };
 

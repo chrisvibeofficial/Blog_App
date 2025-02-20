@@ -6,40 +6,41 @@ const fs = require('fs');
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
-    const file = req.file;
+    const existUser = await userModel.findOne({ email: email.toLowerCase() });
 
-    const user = await userModel.find({ email: email.toLowerCase() });
-    const result = await cloudinary.uploader.upload(file.path);
-
-    fs.unlinkSync(file.path);
-
-    if (user.length > 0) {
-      await cloudinary.uploader.destroy(result.public_id)
+    if (existUser) {
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({
         message: `User with Email: ${email} already exist`
       })
     };
 
+    const result = await cloudinary.uploader.upload(req.file.path);
+    fs.unlinkSync(req.file.path);
+
     const saltRound = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, saltRound);
 
-    const newUser = new userModel({
+    const user = new userModel({
       fullName,
       email,
       password: hashedPassword,
-      profile: { publicId: result.public_id, imageUrl: result.secure_url, },
+      profile: {
+        publicId: result.public_id,
+        imageUrl: result.secure_url
+      }
     });
 
-    await newUser.save();
+    await user.save();
 
     res.status(201).json({
       message: 'User registered successfully',
-      data: newUser
+      data: user
     })
   } catch (error) {
     console.log(error.message);
     res.status(500).json({
-      message: 'Internal server error'
+      message: 'Internal Server Error'
     })
   }
 };
@@ -56,7 +57,7 @@ exports.getUsers = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.status(500).json({
-      message: 'Internal server error'
+      message: 'Internal Server Error'
     })
   }
 };
@@ -81,7 +82,7 @@ exports.getUser = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.status(500).json({
-      message: 'Internal server error'
+      message: 'Internal Server Error'
     })
   }
 };
@@ -91,7 +92,6 @@ exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
-    const file = req.file;
 
     const user = await userModel.findById(id);
 
@@ -106,12 +106,12 @@ exports.updateUser = async (req, res) => {
       profile: user.profile
     };
 
-    if (file && file.path) {
+    if (req.file && req.file.path) {
       await cloudinary.uploader.destroy(user.profile.publicId);
     };
 
-    const result = await cloudinary.uploader.upload(file.path);
-    fs.unlinkSync(file.path);
+    const result = await cloudinary.uploader.upload(req.file.path);
+    fs.unlinkSync(req.file.path);
 
     data.profile = {
       imageUrl: result.secure_url,
@@ -127,7 +127,7 @@ exports.updateUser = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.status(500).json({
-      message: 'Internal server error'
+      message: 'Internal Server Error'
     })
   }
 };
@@ -156,7 +156,7 @@ exports.deleteUser = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     res.status(500).json({
-      message: 'Internal server error'
+      message: 'Internal Server Error'
     })
   }
 };
